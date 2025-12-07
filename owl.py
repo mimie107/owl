@@ -109,7 +109,7 @@ def shap_text_summary(shap_vals):
     explanation += """
 
 These factors reflect changes in signal strength, noise, or timing that the model
-associates with either regular local activity or early signs of departure.
+associates with either regular local activity or early signs of bird departure.
 """
 
     return explanation
