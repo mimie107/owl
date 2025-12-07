@@ -231,7 +231,7 @@ elif page == "📊 EDA Insights":
     if "movement" in df.columns and "hour" in df.columns:
         st.subheader("🕒 How Time of Day Influences Movement Probability")
 
-        hourly = df.groupby("hour")["movement"].mean()
+        hourly = df.groupby("hour")["movement_class"].mean()
 
         fig, ax = plt.subplots(figsize=(8,4))
         ax.plot(hourly.index, hourly.values, marker="o")
@@ -251,14 +251,14 @@ elif page == "📊 EDA Insights":
     # -----------------------------------------------------
     st.subheader("📈 Feature Correlation (with Movement)")
 
-    corr = df[FEATURES + ["movement"]].corr()["movement"].sort_values(ascending=False)
+    corr = df[FEATURES + ["movement_class"]].corr()["movement_class"].sort_values(ascending=False)
 
     st.write(corr.to_frame("Correlation with Movement"))
 
     fig, ax = plt.subplots(figsize=(6,6))
-    plt.matshow(df[FEATURES + ["movement"]].corr(), fignum=fig.number)
-    plt.xticks(range(len(FEATURES)+1), FEATURES + ["movement"], rotation=90)
-    plt.yticks(range(len(FEATURES)+1), FEATURES + ["movement"])
+    plt.matshow(df[FEATURES + ["movement_class"]].corr(), fignum=fig.number)
+    plt.xticks(range(len(FEATURES)+1), FEATURES + ["movement_class"], rotation=90)
+    plt.yticks(range(len(FEATURES)+1), FEATURES + ["movement_class"])
     plt.title("Correlation Heatmap")
     st.pyplot(fig)
 
@@ -274,7 +274,7 @@ elif page == "📊 EDA Insights":
     st.subheader("📡 Does Lower SNR Indicate Movement?")
 
     fig, ax = plt.subplots(figsize=(8,4))
-    ax.scatter(df["snr"], df["movement"], alpha=0.3)
+    ax.scatter(df["snr"], df["movement_class"], alpha=0.3)
     ax.set_xlabel("Signal Strength (SNR)")
     ax.set_ylabel("Movement (0/1)")
     ax.set_title("SNR vs Movement")
