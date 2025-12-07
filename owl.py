@@ -225,9 +225,117 @@ elif page == "📊 EDA Insights":
         **Insight:**  
         Owls are often detected around dusk/night. Peaks here may indicate foraging or early movement activity.
         """)
+    # -----------------------------------------------------
+    # 1. Movement Rate by Hour of Day
+    # -----------------------------------------------------
+    if "movement" in df.columns and "hour" in df.columns:
+        st.subheader("🕒 How Time of Day Influences Movement Probability")
+
+        hourly = df.groupby("hour")["movement"].mean()
+
+        fig, ax = plt.subplots(figsize=(8,4))
+        ax.plot(hourly.index, hourly.values, marker="o")
+        ax.set_xlabel("Hour of Day")
+        ax.set_ylabel("Avg Movement Probability")
+        ax.set_title("Movement Probability by Hour")
+        st.pyplot(fig)
+
+        st.markdown("""
+        **Insight:**  
+        Movement often spikes at certain hours, typically around dusk/night, reflecting
+        natural foraging or migration behavior.
+        """)
+
+    # -----------------------------------------------------
+    # 2. Feature Correlation Heatmap
+    # -----------------------------------------------------
+    st.subheader("📈 Feature Correlation (with Movement)")
+
+    corr = df[FEATURES + ["movement"]].corr()["movement"].sort_values(ascending=False)
+
+    st.write(corr.to_frame("Correlation with Movement"))
+
+    fig, ax = plt.subplots(figsize=(6,6))
+    plt.matshow(df[FEATURES + ["movement"]].corr(), fignum=fig.number)
+    plt.xticks(range(len(FEATURES)+1), FEATURES + ["movement"], rotation=90)
+    plt.yticks(range(len(FEATURES)+1), FEATURES + ["movement"])
+    plt.title("Correlation Heatmap")
+    st.pyplot(fig)
+
+    st.markdown("""
+    **Insight:**  
+    This shows which engineered features have the strongest association with the
+    movement label.
+    """)
+
+    # -----------------------------------------------------
+    # 3. Signal Strength vs Movement
+    # -----------------------------------------------------
+    st.subheader("📡 Does Lower SNR Indicate Movement?")
+
+    fig, ax = plt.subplots(figsize=(8,4))
+    ax.scatter(df["snr"], df["movement"], alpha=0.3)
+    ax.set_xlabel("Signal Strength (SNR)")
+    ax.set_ylabel("Movement (0/1)")
+    ax.set_title("SNR vs Movement")
+    st.pyplot(fig)
+
+    st.markdown("""
+    **Insight:**  
+    Lower SNR often appears before a movement event, consistent with the owl
+    becoming more distant from the tower.
+    """)
+
+    # -----------------------------------------------------
+    # 4. Per-Owl Behavior Overview
+    # -----------------------------------------------------
+    if "motusTagID" in df.columns:
+        st.subheader("🦉 Behavior Overview by Owl (motusTagID)")
+
+        owl_counts = df["motusTagID"].value_counts()
+
+        fig, ax = plt.subplots(figsize=(8,4))
+        owl_counts.plot(kind="bar", ax=ax)
+        ax.set_title("Number of Detections per Owl")
+        ax.set_ylabel("Detection Count")
+        ax.set_xlabel("motusTagID")
+        st.pyplot(fig)
+
+        st.markdown("""
+        **Insight:**  
+        Some owls appear frequently, while others have short detection histories.
+        Long gaps in detection often correspond to movement behavior.
+        """)
+
+    # -----------------------------------------------------
+    # 5. SNR & Noise Variation Over Time (Optional per Owl)
+    # -----------------------------------------------------
+    if "datetime" in df.columns and "motusTagID" in df.columns:
+        st.subheader("📈 Compare Owls: SNR & Noise Over Time")
+
+        selected_owl = st.selectbox(
+            "Choose an Owl to Inspect:",
+            df["motusTagID"].unique()
+        )
+
+        owl_df = df[df["motusTagID"] == selected_owl].sort_values("datetime")
+
+        fig, ax = plt.subplots(figsize=(10,4))
+        ax.plot(owl_df["datetime"], owl_df["snr"], label="SNR", color="blue")
+        ax.plot(owl_df["datetime"], owl_df["noise"], label="Noise", color="red", alpha=0.6)
+        ax.set_ylabel("Value")
+        ax.set_title(f"SNR & Noise Over Time — Owl {selected_owl}")
+        ax.legend()
+        st.pyplot(fig)
+
+        st.markdown("""
+        **Insight:**  
+        Sudden drops in SNR or spikes in noise often precede a movement event.
+        """)
+
 
     # ---------------------------
-    # 2. SNR distribution (distance proxy)
+    # 6. SNR distribution (distance proxy)
     # ---------------------------
     st.subheader("📡 Signal Strength (SNR) Distribution")
     fig, ax = plt.subplots(figsize=(8, 4))
@@ -245,7 +353,7 @@ elif page == "📊 EDA Insights":
 
 
     # ---------------------------
-    # 3. Noise distribution
+    # 7. Noise distribution
     # ---------------------------
     st.subheader("🌫 Noise Level Distribution")
     fig, ax = plt.subplots(figsize=(8, 4))
