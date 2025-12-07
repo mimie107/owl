@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import joblib
 import shap
+import seaborn as sns 
 import matplotlib.pyplot as plt
 from sentence_transformers import SentenceTransformer, util
 
