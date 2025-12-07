@@ -282,21 +282,27 @@ elif page == "📊 EDA Insights":
     # ⭐ Movement Probability Over Time (Per Owl)
     # -------------------------------------------
     st.subheader("📈 Movement Probability Over Time")
-
-    # Fix: convert datetime column to a real timedelta
     if "datetime" in df.columns:
+    
+        # Attempt to parse regular datetime strings
         try:
-            df["datetime"] = pd.to_timedelta(df["datetime"], errors="coerce")
+            df["datetime"] = pd.to_datetime(df["datetime"], errors="raise")
         except:
-            pass
-
-        # Select owl through unique motusTagID
+            # Try Unix timestamp in seconds
+            try:
+                df["datetime"] = pd.to_datetime(df["datetime"], unit="s", errors="raise")
+            except:
+                # Try Unix timestamp in milliseconds
+                df["datetime"] = pd.to_datetime(df["datetime"], unit="ms", errors="coerce")
+    
+        # Now proceed with sorting by time
         if "motusTagID" in df.columns:
             owl_ids = df["motusTagID"].unique()
             selected_owl = st.selectbox("Choose an Owl (motusTagID)", owl_ids)
             owl_df = df[df["motusTagID"] == selected_owl].sort_values("datetime")
         else:
             owl_df = df.sort_values("datetime")
+
 
         # Compute movement probabilities
         X = owl_df[FEATURES].values
