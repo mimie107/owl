@@ -202,215 +202,191 @@ identify migration behavior and better understand owl movement patterns over tim
 
 
 # =============================================
-# PAGE 2 — EDA INSIGHTS
+# PAGE 2 — EDA INSIGHTS (IMPROVED VERSION)
 # =============================================
 elif page == "📊 EDA Insights":
-    st.header("📊 Exploratory Data Analysis")
 
-    st.subheader("Dataset Preview")
+    st.header("📊 Exploratory Data Analysis — Owl Detectability & Movement")
+
+    # -----------------------------------------------------
+    # 0. Dataset Preview
+    # -----------------------------------------------------
+    st.subheader("📄 Dataset Preview")
     st.dataframe(df.head())
 
-    st.subheader("Summary Statistics")
-    st.write(df.describe())
-
-    if "hour" in df.columns:
-        st.subheader("🕒 Detection Times (Hourly Pattern)")
-        fig, ax = plt.subplots(figsize=(8, 4))
-        ax.hist(df["hour"], bins=24, color="skyblue", edgecolor="black")
-        ax.set_xlabel("Hour of Day")
-        ax.set_ylabel("Count")
-        ax.set_title("Distribution of Owl Detections by Hour")
-        st.pyplot(fig)
-        st.markdown("""
-        **Insight:**  
-        Owls are often detected around dusk/night. Peaks here may indicate foraging or early movement activity.
-        """)
     # -----------------------------------------------------
-    # 1. Movement Rate by Hour of Day
+    # 1. Movement Probability by Time of Day
     # -----------------------------------------------------
-    if "movement" in df.columns and "hour" in df.columns:
-        st.subheader("🕒 How Time of Day Influences Movement Probability")
+    if "movement_class" in df.columns and "hour" in df.columns:
+        st.subheader("🕒 How Time of Day Influences Movement")
 
         hourly = df.groupby("hour")["movement_class"].mean()
 
-        fig, ax = plt.subplots(figsize=(8,4))
+        fig, ax = plt.subplots(figsize=(8, 4))
         ax.plot(hourly.index, hourly.values, marker="o")
         ax.set_xlabel("Hour of Day")
-        ax.set_ylabel("Avg Movement Probability")
-        ax.set_title("Movement Probability by Hour")
+        ax.set_ylabel("Avg Movement (0–1)")
+        ax.set_title("Movement Probability by Hour of Day")
         st.pyplot(fig)
 
         st.markdown("""
-        **Insight:**  
-        Movement often spikes at certain hours, typically around dusk/night, reflecting
-        natural foraging or migration behavior.
+        **Insight:** Owls tend to show increased movement during certain hours 
+        (typically dusk or night). Behavioral rhythms can strongly influence detection patterns.
         """)
 
     # -----------------------------------------------------
-    # 2. Feature Correlation Heatmap
+    # 2. Correlation Heatmap — Movement vs Features
     # -----------------------------------------------------
-    st.subheader("📈 Feature Correlation (with Movement)")
+    st.subheader("🔥 What Features Influence Movement the Most? (Correlation Heatmap)")
 
-    corr = df[FEATURES + ["movement_class"]].corr()["movement_class"].sort_values(ascending=False)
+    corr = df[FEATURES + ["movement_class"]].corr()
 
-    st.write(corr.to_frame("Correlation with Movement"))
-
-    fig, ax = plt.subplots(figsize=(6,6))
-    plt.matshow(df[FEATURES + ["movement_class"]].corr(), fignum=fig.number)
-    plt.xticks(range(len(FEATURES)+1), FEATURES + ["movement_class"], rotation=90)
-    plt.yticks(range(len(FEATURES)+1), FEATURES + ["movement_class"])
-    plt.title("Correlation Heatmap")
+    fig, ax = plt.subplots(figsize=(12, 10))
+    sns.heatmap(
+        corr,
+        annot=True, fmt=".2f",
+        cmap="coolwarm", square=True,
+        cbar_kws={"shrink": 0.6},
+        ax=ax
+    )
+    ax.set_title("Correlation Between Features and Movement", fontsize=16)
+    plt.xticks(rotation=45, ha="right")
+    plt.yticks(rotation=0)
     st.pyplot(fig)
 
     st.markdown("""
     **Insight:**  
-    This shows which engineered features have the strongest association with the
-    movement label.
+    - Features related to **signal stability**, **rolling noise**, and **lag trends** 
+      often correlate with movement.  
+    - Lower SNR and higher noise frequently precede a movement event.
     """)
 
     # -----------------------------------------------------
-    # 3. Signal Strength vs Movement
-    # -----------------------------------------------------
-    st.subheader("📡 Does Lower SNR Indicate Movement?")
-
-    fig, ax = plt.subplots(figsize=(8,4))
-    ax.scatter(df["snr"], df["movement_class"], alpha=0.3)
-    ax.set_xlabel("Signal Strength (SNR)")
-    ax.set_ylabel("Movement (0/1)")
-    ax.set_title("SNR vs Movement")
-    st.pyplot(fig)
-
-    st.markdown("""
-    **Insight:**  
-    Lower SNR often appears before a movement event, consistent with the owl
-    becoming more distant from the tower.
-    """)
-
-    # -----------------------------------------------------
-    # 4. Per-Owl Behavior Overview
+    # 3. Detection Counts per Owl
     # -----------------------------------------------------
     if "motusTagID" in df.columns:
-        st.subheader("🦉 Behavior Overview by Owl (motusTagID)")
+        st.subheader("🦉 Detection Volume per Owl")
 
-        owl_counts = df["motusTagID"].value_counts()
+        det_counts = df["motusTagID"].value_counts().sort_values(ascending=False)
 
-        fig, ax = plt.subplots(figsize=(8,4))
-        owl_counts.plot(kind="bar", ax=ax)
-        ax.set_title("Number of Detections per Owl")
+        top_k = st.slider("Show Top N Owls:", 5, 40, 20)
+
+        fig, ax = plt.subplots(figsize=(12, 4))
+        det_counts.head(top_k).plot(kind="bar", ax=ax)
+        ax.set_title(f"Top {top_k} Owls by Detection Count")
         ax.set_ylabel("Detection Count")
-        ax.set_xlabel("motusTagID")
+        plt.xticks(rotation=45)
         st.pyplot(fig)
 
         st.markdown("""
         **Insight:**  
-        Some owls appear frequently, while others have short detection histories.
-        Long gaps in detection often correspond to movement behavior.
+        Detection variability helps identify owls with long active periods  
+        vs. owls that possibly left early (low detection count).
         """)
 
     # -----------------------------------------------------
-    # 5. SNR & Noise Variation Over Time (Optional per Owl)
+    # 4. SNR & Noise Trends per Owl (Downsampled)
     # -----------------------------------------------------
     if "datetime" in df.columns and "motusTagID" in df.columns:
-        st.subheader("📈 Compare Owls: SNR & Noise Over Time")
+        st.subheader("📡 SNR & Noise Over Time (Per Owl)")
 
-        selected_owl = st.selectbox(
-            "Choose an Owl to Inspect:",
-            df["motusTagID"].unique()
-        )
-
+        selected_owl = st.selectbox("Choose Owl:", df["motusTagID"].unique())
         owl_df = df[df["motusTagID"] == selected_owl].sort_values("datetime")
 
-        fig, ax = plt.subplots(figsize=(10,4))
-        ax.plot(owl_df["datetime"], owl_df["snr"], label="SNR", color="blue")
-        ax.plot(owl_df["datetime"], owl_df["noise"], label="Noise", color="red", alpha=0.6)
-        ax.set_ylabel("Value")
+        # Downsample to avoid clutter
+        plot_df = owl_df.iloc[::50, :]
+
+        fig, ax = plt.subplots(figsize=(12, 4))
+        ax.plot(plot_df["datetime"], plot_df["snr"], label="SNR", color="blue")
+        ax.plot(plot_df["datetime"], plot_df["noise"], label="Noise", color="red", alpha=0.6)
         ax.set_title(f"SNR & Noise Over Time — Owl {selected_owl}")
+        ax.set_ylabel("Value")
+        plt.xticks(rotation=45)
         ax.legend()
         st.pyplot(fig)
 
         st.markdown("""
         **Insight:**  
-        Sudden drops in SNR or spikes in noise often precede a movement event.
+        Movement events typically coincide with:  
+        - decreasing **SNR** (owl moving farther away),  
+        - spikes or instability in **noise**.
         """)
 
+    # -----------------------------------------------------
+    # 5. SNR Distribution
+    # -----------------------------------------------------
+    st.subheader("📊 Distribution of Signal Strength (SNR)")
 
-    # ---------------------------
-    # 6. SNR distribution (distance proxy)
-    # ---------------------------
-    st.subheader("📡 Signal Strength (SNR) Distribution")
     fig, ax = plt.subplots(figsize=(8, 4))
     ax.hist(df["snr"], bins=40, color="lightgreen", edgecolor="black")
+    ax.set_title("Signal Strength (SNR) Distribution")
     ax.set_xlabel("SNR")
     ax.set_ylabel("Frequency")
-    ax.set_title("Distribution of Signal Strength (SNR)")
     st.pyplot(fig)
+
     st.markdown("""
     **Insight:**  
-    Higher Signal Strength (SNR) means the owl was closer to the tower.  
-    Lower Signal Strength (SNR) may indicate movement away from the detection area.
+    Higher SNR → owl was closer to the tower.  
+    Lower SNR → owl moving outward, often preceding departure events.
     """)
 
-
-
-    # ---------------------------
-    # 7. Noise distribution
-    # ---------------------------
+    # -----------------------------------------------------
+    # 6. Noise Distribution
+    # -----------------------------------------------------
     st.subheader("🌫 Noise Level Distribution")
+
     fig, ax = plt.subplots(figsize=(8, 4))
     ax.hist(df["noise"], bins=40, color="salmon", edgecolor="black")
+    ax.set_title("Background Noise Distribution")
     ax.set_xlabel("Noise")
     ax.set_ylabel("Frequency")
-    ax.set_title("Distribution of Noise Levels")
     st.pyplot(fig)
+
     st.markdown("""
     **Insight:**  
-    Rising noise levels can precede declines in SNR and may signal early movement or environmental changes.
+    Environmental noise spikes can interfere with detection and often align with  
+    movement transitions or weather-driven disturbances.
     """)
 
-
-
-    # ----------------------------
-    # MOVEMENT PROBABILITY OVER TIME
-    # ----------------------------
-    st.subheader("📈 Movement Probability Over Time")
+    # -----------------------------------------------------
+    # 7. Movement Probability Trend (Model Output)
+    # -----------------------------------------------------
+    st.subheader("📈 Movement Probability Over Time (Model Output)")
 
     if "datetime" in df.columns:
         try:
             df["datetime"] = pd.to_datetime(df["datetime"], errors="raise")
         except:
             try:
-                df["datetime"] = pd.to_datetime(df["datetime"], unit="s", errors="raise")
+                df["datetime"] = pd.to_datetime(df["datetime"], unit="s")
             except:
-                df["datetime"] = pd.to_datetime(df["datetime"], unit="ms", errors="coerce")
+                df["datetime"] = pd.to_datetime(df["datetime"], unit="ms")
 
-        if "motusTagID" in df.columns:
-            owl_ids = df["motusTagID"].unique()
-            selected_owl = st.selectbox("Choose an Owl", owl_ids)
-            owl_df = df[df["motusTagID"] == selected_owl].sort_values("datetime")
-        else:
-            owl_df = df.sort_values("datetime")
+        owl_ids = df["motusTagID"].unique()
+        selected_owl = st.selectbox("Choose an Owl for Model Trend:", owl_ids)
+
+        owl_df = df[df["motusTagID"] == selected_owl].sort_values("datetime")
 
         X = owl_df[FEATURES].values
         movement_probs = clf.predict_proba(X)[:, 1]
 
-        fig, ax = plt.subplots(figsize=(10, 4))
+        fig, ax = plt.subplots(figsize=(12, 4))
         ax.plot(owl_df["datetime"], movement_probs, color="darkred")
         ax.axhline(0.30, linestyle="--", color="gray", label="Movement threshold (0.30)")
-        ax.set_ylabel("Predicted Movement Probability")
-        ax.set_xlabel("Time")
-        ax.set_title("Movement Probability Trend Over Time")
+        ax.set_title(f"Predicted Movement Probability — Owl {selected_owl}")
+        ax.set_ylabel("Model Probability")
+        plt.xticks(rotation=45)
         ax.legend()
         st.pyplot(fig)
 
         st.markdown("""
         **Insight:**  
-        This chart shows how movement probability changes across time for a single owl.
-        - Stable low values suggest local activity.  
-        - Rising or unstable probabilities may reflect early signs of departure.  
-        - Fluctuations often correspond to changes in SNR, noise, or lag features.
+        - Low stable values → typical resident behavior  
+        - Sharp increases → early warning of departure  
+        - Short spikes → temporary roaming or foraging  
         """)
-    else:
-        st.info("Datetime column not found — unable to plot movement probability over time.")
+
+
 
 
 
