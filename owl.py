@@ -388,22 +388,30 @@ elif page == "🧠 RAG Explanation":
 
     st.header("🧠 Owl Movement Assistant — Ask Anything")
 
+    # Initialize chat history
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
 
+    # Display past chat messages
     for msg in st.session_state.chat_history:
         if msg["role"] == "user":
             st.markdown(f"**🧑 You:** {msg['content']}")
         else:
             st.markdown(f"**🦉 Assistant:** {msg['content']}")
 
+    # User input
     user_input = st.text_input("Ask a question:")
 
     if user_input:
-        st.session_state.chat_history.append({"role": "user", "content": user_input})
+        # Save user message
+        st.session_state.chat_history.append(
+            {"role": "user", "content": user_input}
+        )
 
+        # Retrieve scientific/model context
         ctx = retrieve_context(user_input)
 
+        # Compose assistant reply
         reply = f"""
 ### 🦉 Assistant Response
 
@@ -416,11 +424,16 @@ Based on your question, the model’s behavior depends on patterns in signal
 strength, noise, and timing that often indicate early movement or stable residency.
 """
 
-st.session_state.chat_history.append({"role": "assistant", "content": reply})
-st.markdown(reply)
+        # Save assistant reply
+        st.session_state.chat_history.append(
+            {"role": "assistant", "content": reply}
+        )
 
-if st.button("🔄 Reset Conversation"):
-    st.session_state.chat_history = []
-    st.rerun()
+        st.markdown(reply)
+
+    # Reset button
+    if st.button("🔄 Reset Conversation"):
+        st.session_state.chat_history = []
+        st.rerun()
 
 
