@@ -70,14 +70,51 @@ def shap_for_row(row):
 
 
 def shap_text_summary(shap_vals):
+    """
+    Produces simple, plain-language explanations of the top features.
+    """
+
+    # Map technical feature names to human-friendly labels
+    friendly_names = {
+        "snr": "Signal strength (how close the owl was)",
+        "sigsd": "Signal stability",
+        "noise": "Background noise",
+        "burstSlop": "Detection slope (change in signal pattern)",
+        "snr_lag1": "Signal strength one step earlier",
+        "snr_lag2": "Signal strength two steps earlier",
+        "sigsd_lag1": "Signal stability one step earlier",
+        "noise_lag1": "Noise one step earlier",
+        "snr_roll3": "Short-term signal trend (3-point)",
+        "noise_roll3": "Short-term noise trend (3-point)",
+        "hour_sin": "Time of day (night vs day)",
+        "hour_cos": "Time of day (alternative scale)",
+        "day": "Day of month",
+        "month": "Month of year"
+    }
+
     pairs = list(zip(FEATURES, shap_vals))
     top = sorted(pairs, key=lambda x: abs(x[1]), reverse=True)[:5]
 
-    text = "Top SHAP contributors:\n"
+    explanation = "### Key Factors That Drove This Prediction\n"
+
     for feat, val in top:
-        direction = "↑ increases movement probability" if val > 0 else "↓ reduces movement probability"
-        text += f"- {feat}: {val:.3f} → {direction}\n"
-    return text
+        name = friendly_names.get(feat, feat)
+
+        if val > 0:
+            direction = "This pushed the model **toward 'movement'**."
+        else:
+            direction = "This pushed the model **toward 'resident'**."
+
+        explanation += f"- **{name}**: {direction}\n"
+
+    explanation += """
+    
+These factors represent changes in signal strength, noise, or timing that the model
+associates with either local activity or early signs of departure.
+"""
+
+    return explanation
+
 
 
 # =============================================
@@ -366,17 +403,104 @@ elif page == "🔍 Prediction Explorer":
 
 
 # =============================================
-# PAGE 4 — RAG EXPLANATION
+# PAGE 4 — RAG CHATBOT (FULL INTELLIGENT MODE)
 # =============================================
 elif page == "🧠 RAG Explanation":
-    st.header("🧠 RAG Explanation")
 
-    idx = st.number_input("Row:", min_value=0, max_value=len(df)-1, value=0)
-    row = df.iloc[idx]
+    st.header("🧠 Owl Movement Assistant — Ask Anything")
 
-    shap_vals = shap_for_row(row)
-    shap_text = shap_text_summary(shap_vals)
-    ctx = retrieve_context("movement prediction")
+    st.write("""
+    This Assistant uses **Retrieval-Augmented Generation (RAG)** 
+    to answer your questions about:
+    - 🦉 Owl movement and behavior  
+    - 📡 Detection signals  
+    - 🔧 Model decisions and SHAP explanations  
+    - 📊 Features contributing to predictions  
+    
+    We find the best matching information to help explain your question.
+    """)
 
-    explanation = simple_rag_explanation(shap_text, ctx)
-    st.markdown(explanation)
+    # -------------------------------------------------------
+    # Initialize chat history
+    # -------------------------------------------------------
+    if "chat_history" not in st.session_state:
+        st.session_state.chat_history = []
+
+    # -------------------------------------------------------
+    # Display previous chat messages
+    # -------------------------------------------------------
+    for msg in st.session_state.chat_history:
+        if msg["role"] == "user":
+            st.markdown(f"**🧑‍💻 You:** {msg['content']}")
+        else:
+            st.markdown(f"**🦉 Assistant:** {msg['content']}")
+
+    st.markdown("---")
+
+    # -------------------------------------------------------
+    # User input
+    # -------------------------------------------------------
+    user_question = st.text_input("Ask a question about owl movement, detection signals, or the model:")
+
+    if user_question:
+
+        # Add to history
+        st.session_state.chat_history.append({"role": "user", "content": user_question})
+
+        # -----------------------------------------------
+        # Retrieve relevant scientific/model context (RAG)
+        # -----------------------------------------------
+        rag_ctx = retrieve_context(user_question)
+
+        # -----------------------------------------------
+        # Optional SHAP explanation enhancement
+        # -----------------------------------------------
+        idx = st.number_input(
+            "Select a row (optional SHAP explanation):", 
+            min_value=0, max_value=len(df)-1, value=0
+        )
+        row = df.iloc[idx]
+        shap_vals = shap_for_row(row)
+        shap_text = shap_text_summary(shap_vals)
+
+        # -----------------------------------------------
+        # Final combined assistant response
+        # -----------------------------------------------
+        answer = f"""
+### 🦉 Assistant Response
+
+**Your Question:**  
+{user_question}
+
+---
+
+### 📘 Retrieved Explanation (Scientific + Model Context)
+
+{rag_ctx}
+
+---
+
+### 🔍 SHAP Explanation (Row {idx})  
+Understanding why the model predicted this row the way it did:
+
+{shap_text}
+
+---
+
+### 📝 Summary  
+Based on your question and the available scientific knowledge + feature explanations,  
+the model's behavior is influenced by detection stability, noise profiles,  
+signal strength changes, and lag-based deviations that often precede movement.
+
+If you’d like, ask follow-up questions or choose a different data row.
+"""
+
+        # Save and display response
+        st.session_state.chat_history.append({"role": "assistant", "content": answer})
+        st.markdown(answer)
+
+    # Reset conversation
+    if st.button("🔄 Reset Conversation"):
+        st.session_state.chat_history = []
+        st.experimental_rerun()
+
