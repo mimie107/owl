@@ -5,6 +5,7 @@ numpy
 joblib
 shap
 matplotlib
+seaborn
 sentence-transformers
 faiss-cpu
 scikit-learn
