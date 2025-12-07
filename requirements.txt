@@ -1,0 +1,11 @@
+
+streamlit
+pandas
+numpy
+joblib
+shap
+matplotlib
+sentence-transformers
+faiss-cpu
+scikit-learn
+xgboost
