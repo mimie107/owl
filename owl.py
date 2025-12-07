@@ -434,7 +434,6 @@ strength, noise, and timing that often indicate early movement or stable residen
     # Reset button
     if st.button("🔄 Reset Conversation"):
         st.session_state.chat_history = []
-        st.session_state["chat_input"]
         st.rerun()
 
 
