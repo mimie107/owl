@@ -70,7 +70,7 @@ def shap_for_row(row):
 
 
 # =============================================
-# HUMAN-FRIENDLY SHAP TEXT
+#  SHAP  EXPLAINATION TEXT
 # =============================================
 def shap_text_summary(shap_vals):
 
@@ -174,11 +174,11 @@ This tool helps us understand owl activity patterns at the Beaverhill Bird Obser
 using detection data collected from the automated radio-telemetry tower.
 
 ### 🔍 What this app does
-We analyze the detection signals collected from tagged owls and:
-- Explore the dataset to understand detection patterns  
-- Use a machine learning model (XGBoost) to classify whether an owl is **moving/migrating (1)** or **staying local/resident (0)**
-- Explain *why* the model made a prediction using **SHAP feature interpretation**
-- Provide **contextual scientific explanations** using a small Retrieval-Augmented Generation (RAG) system
+• Analyze the detection signals collected from tagged owls and:
+• Explore detection patterns  
+• Predict when an owl is **moving(1) vs resident(0) **  
+• Understand *why* with SHAP explanations  
+• Ask ecological or modelling questions using Retrieval-Augmented Generation (RAG) system assistant 
 
 ### 🦉 Why this matters
 These insights help us answer key ecological questions, such as:
@@ -197,11 +197,7 @@ These insights help us answer key ecological questions, such as:
 This app brings together ecological knowledge and AI modeling to help us
 identify migration behavior and better understand owl movement patterns over time.
 
-You can:
-• Explore detection patterns  
-• Predict when an owl is **moving vs resident**  
-• Understand *why* with SHAP explanations  
-• Ask ecological or modeling questions using our RAG assistant  
+ 
 """)
 
 
