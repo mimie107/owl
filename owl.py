@@ -416,11 +416,11 @@ Based on your question, the model’s behavior depends on patterns in signal
 strength, noise, and timing that often indicate early movement or stable residency.
 """
 
-        st.session_state.chat_history.append({"role": "assistant", "content": reply})
-        st.markdown(reply)
+st.session_state.chat_history.append({"role": "assistant", "content": reply})
+st.markdown(reply)
 
-       if st.button("🔄 Reset Conversation"):
-            st.session_state.chat_history = []
-            st.rerun()
+if st.button("🔄 Reset Conversation"):
+    st.session_state.chat_history = []
+    st.rerun()
 
 
