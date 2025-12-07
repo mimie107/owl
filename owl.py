@@ -69,25 +69,24 @@ def shap_for_row(row):
     return np.zeros(len(FEATURES))
 
 
+# =============================================
+# HUMAN-FRIENDLY SHAP TEXT
+# =============================================
 def shap_text_summary(shap_vals):
-    """
-    Produces simple, plain-language explanations of the top features.
-    """
 
-    # Map technical feature names to human-friendly labels
     friendly_names = {
-        "snr": "Signal strength (how close the owl was)",
+        "snr": "Signal strength (owl distance)",
         "sigsd": "Signal stability",
         "noise": "Background noise",
-        "burstSlop": "Detection slope (change in signal pattern)",
-        "snr_lag1": "Signal strength one step earlier",
-        "snr_lag2": "Signal strength two steps earlier",
-        "sigsd_lag1": "Signal stability one step earlier",
-        "noise_lag1": "Noise one step earlier",
+        "burstSlop": "Change in detection pattern",
+        "snr_lag1": "Signal strength (1 step earlier)",
+        "snr_lag2": "Signal strength (2 steps earlier)",
+        "sigsd_lag1": "Signal stability (1 step earlier)",
+        "noise_lag1": "Noise (1 step earlier)",
         "snr_roll3": "Short-term signal trend (3-point)",
         "noise_roll3": "Short-term noise trend (3-point)",
-        "hour_sin": "Time of day (night vs day)",
-        "hour_cos": "Time of day (alternative scale)",
+        "hour_sin": "Time of day (night/day scale)",
+        "hour_cos": "Time of day (cosine scale)",
         "day": "Day of month",
         "month": "Month of year"
     }
@@ -108,9 +107,9 @@ def shap_text_summary(shap_vals):
         explanation += f"- **{name}**: {direction}\n"
 
     explanation += """
-    
-These factors represent changes in signal strength, noise, or timing that the model
-associates with either local activity or early signs of departure.
+
+These factors reflect changes in signal strength, noise, or timing that the model
+associates with either regular local activity or early signs of departure.
 """
 
     return explanation
@@ -118,7 +117,7 @@ associates with either local activity or early signs of departure.
 
 
 # =============================================
-# 5 — RAG (NO TRANSFORMERS)
+# 5 — RAG DOCUMENT STORE
 # =============================================
 @st.cache_resource
 def load_embedder():
@@ -126,21 +125,20 @@ def load_embedder():
 
 embedder = load_embedder()
 
-
 rag_docs = {
     "movement_definition": """
-Movement_class = 1 indicates a long gap in detections suggesting temporary
-departure, vagrancy, or possible migratory behavior.
+Movement_class = 1 represents a long gap in detections, often interpreted as
+temporary departure, roaming, or early signs of migration.
 """,
 
     "feature_info": """
-Important predictors include SNR, noise, lag features, rolling averages,
-hour_sin/hour_cos, and signal stability indicators.
+The model relies on SNR, noise, lag features, rolling averages, and
+time-of-day signals to infer movement patterns.
 """,
 
     "xgboost_info": """
-This classifier uses engineered features derived from your pipeline to detect
-changes in pattern consistency and detection gaps.
+The classifier uses engineered features from your pipeline to detect patterns
+that indicate changes in behavior or tower detectability.
 """
 }
 
@@ -157,34 +155,12 @@ def retrieve_context(query):
 
 
 # =============================================
-# SIMPLE RAG EXPLANATION (NO LLM)
-# =============================================
-def simple_rag_explanation(shap_text, rag_context):
-    return f"""
-### Explanation Summary
-
-**SHAP-Based Feature Impact:**
-
-{shap_text}
-
-**Biological + Modeling Context (RAG):**
-
-{rag_context}
-
-The model detected patterns in the input row that match known signatures of
-movement behavior (e.g., signal disruption, increased noise, lag instability).
-"""
-
-
-# =============================================
-# SIDEBAR NAV
+# SIDEBAR NAVIGATION
 # =============================================
 page = st.sidebar.radio(
     "Navigate",
     ["🏠 Home", "📊 EDA Insights", "🔍 Prediction Explorer", "🧠 RAG Explanation"]
 )
-
-
 
 # =============================================
 # PAGE 1 — HOME
@@ -220,33 +196,27 @@ These insights help us answer key ecological questions, such as:
 
 This app brings together ecological knowledge and AI modeling to help us
 identify migration behavior and better understand owl movement patterns over time.
+
+You can:
+• Explore detection patterns  
+• Predict when an owl is **moving vs resident**  
+• Understand *why* with SHAP explanations  
+• Ask ecological or modeling questions using our RAG assistant  
 """)
 
+
 # =============================================
-# PAGE 2 - EXPLORATORY DATA ANALYSIS (EDA)
+# PAGE 2 — EDA INSIGHTS
 # =============================================
 elif page == "📊 EDA Insights":
-    st.header("📊 Exploratory Data Analysis — Owl Detectability Insights")
+    st.header("📊 Exploratory Data Analysis")
 
-    if uploaded is None:
-        st.warning("Upload your dataset to explore.")
-        st.stop()
-
-    # ---------------------------
-    # Dataset preview
-    # ---------------------------
     st.subheader("Dataset Preview")
     st.dataframe(df.head())
 
-    # ---------------------------
-    # Summary statistics
-    # ---------------------------
     st.subheader("Summary Statistics")
     st.write(df.describe())
 
-    # ---------------------------
-    # 1. Detection Times (Hourly Pattern)
-    # ---------------------------
     if "hour" in df.columns:
         st.subheader("🕒 Detection Times (Hourly Pattern)")
         fig, ax = plt.subplots(figsize=(8, 4))
@@ -276,6 +246,8 @@ elif page == "📊 EDA Insights":
     Lower Signal Strength (SNR) may indicate movement away from the detection area.
     """)
 
+
+
     # ---------------------------
     # 3. Noise distribution
     # ---------------------------
@@ -291,57 +263,29 @@ elif page == "📊 EDA Insights":
     Rising noise levels can precede declines in SNR and may signal early movement or environmental changes.
     """)
 
-    # ---------------------------
-    # 4. Movement class distribution 
-    # ---------------------------
-    if "movement" in df.columns:
-        st.subheader("🦉 Movement vs Resident — Class Balance")
-        fig, ax = plt.subplots(figsize=(6, 4))
-        df["movement"].value_counts().plot(kind="bar", color=["orange", "blue"], ax=ax)
-        ax.set_xticklabels(["Resident (0)", "Movement (1)"], rotation=0)
-        ax.set_ylabel("Count")
-        ax.set_title("Distribution of Movement Labels")
-        st.pyplot(fig)
 
-        # Add percentage breakdown
-        movement_ratio = df["movement"].mean() * 100
-        resident_ratio = 100 - movement_ratio
 
-        st.markdown(f"""
-        **Insight:**  
-        - Resident (0): **{resident_ratio:.2f}%**  
-        - Movement (1): **{movement_ratio:.2f}%**  
-
-        Movement events are rare and occur in short windows, which is expected in telemetry data.
-        """)
-
-    # -------------------------------------------
-    # ⭐ Movement Probability Over Time (Per Owl)
-    # -------------------------------------------
+    # ----------------------------
+    # MOVEMENT PROBABILITY OVER TIME
+    # ----------------------------
     st.subheader("📈 Movement Probability Over Time")
+
     if "datetime" in df.columns:
-    
-        # Attempt to parse regular datetime strings
         try:
             df["datetime"] = pd.to_datetime(df["datetime"], errors="raise")
         except:
-            # Try Unix timestamp in seconds
             try:
                 df["datetime"] = pd.to_datetime(df["datetime"], unit="s", errors="raise")
             except:
-                # Try Unix timestamp in milliseconds
                 df["datetime"] = pd.to_datetime(df["datetime"], unit="ms", errors="coerce")
-    
-        # Now proceed with sorting by time
+
         if "motusTagID" in df.columns:
             owl_ids = df["motusTagID"].unique()
-            selected_owl = st.selectbox("Choose an Owl (motusTagID)", owl_ids)
+            selected_owl = st.selectbox("Choose an Owl", owl_ids)
             owl_df = df[df["motusTagID"] == selected_owl].sort_values("datetime")
         else:
             owl_df = df.sort_values("datetime")
 
-
-        # Compute movement probabilities
         X = owl_df[FEATURES].values
         movement_probs = clf.predict_proba(X)[:, 1]
 
@@ -371,25 +315,25 @@ elif page == "📊 EDA Insights":
 # PAGE 3 — PREDICTION EXPLORER
 # =============================================
 elif page == "🔍 Prediction Explorer":
+
     st.header("🔍 Prediction Explorer")
 
-    idx = st.number_input("Row index:", min_value=0, max_value=len(df)-1, value=0)
+    idx = st.number_input("Row index:", 0, len(df)-1, 0)
     row = df.iloc[idx]
 
-    # Prediction
     prob = clf.predict_proba([row[FEATURES]])[0, 1]
     pred = int(prob >= 0.30)
 
-    st.subheader("Prediction")
-    st.write(f"**Predicted class:** {'Movement (1)' if pred else 'Resident (0)'}")
-    st.write(f"**Probability of movement:** {prob:.3f}")
+    st.write(f"**Predicted Class:** {'Movement (1)' if pred else 'Resident (0)'}")
+    st.write(f"**Movement Probability:** {prob:.3f}")
 
     # SHAP
     shap_vals = shap_for_row(row)
-    st.subheader("SHAP Explanation")
-    st.text(shap_text_summary(shap_vals))
 
-    # Waterfall
+    st.subheader("SHAP Summary")
+    st.markdown(shap_text_summary(shap_vals))
+
+    # WATERFALL
     shap_exp = shap.Explanation(
         values=shap_vals,
         base_values=explainer.expected_value,
@@ -401,106 +345,84 @@ elif page == "🔍 Prediction Explorer":
     shap.plots.waterfall(shap_exp, show=False)
     st.pyplot(fig)
 
+    # --------------------------------------------------------
+    #  INTERPRETATION OF SHAP WATERFALL CHART
+    # --------------------------------------------------------
+    st.markdown("""
+### 🔎 How to Read This SHAP Waterfall Chart
+
+- **Pink bars (positive)** → push the prediction **toward Movement (1)**  
+- **Blue bars (negative)** → push the prediction **toward Resident (0)**  
+- **Longer bars** = stronger influence on the prediction  
+""")
+
+    friendly_names = {
+        "snr": "Signal strength (owl distance)",
+        "sigsd": "Signal stability",
+        "noise": "Background noise",
+        "burstSlop": "Change in detection pattern",
+        "snr_lag1": "Signal strength (1 step earlier)",
+        "snr_lag2": "Signal strength (2 steps earlier)",
+        "sigsd_lag1": "Signal stability (1 step earlier)",
+        "noise_lag1": "Noise (1 step earlier)",
+        "snr_roll3": "Short-term signal trend",
+        "noise_roll3": "Short-term noise trend",
+        "hour_sin": "Time of day (night/day)",
+        "hour_cos": "Time of day (smooth cycle)",
+        "day": "Day",
+        "month": "Month"
+    }
+
+    st.markdown("### 📝  Breakdown")
+
+    for feat, val in zip(FEATURES, shap_vals):
+        name = friendly_names.get(feat, feat)
+        if val > 0:
+            direction = "➡️ pushed toward **Movement**"
+        else:
+            direction = "⬅️ pushed toward **Resident**"
+        st.markdown(f"- **{name}**: {direction}")
+
+
 
 # =============================================
-# PAGE 4 — RAG CHATBOT (FULL INTELLIGENT MODE)
+# PAGE 4 — RAG CHATBOT
 # =============================================
 elif page == "🧠 RAG Explanation":
 
     st.header("🧠 Owl Movement Assistant — Ask Anything")
 
-    st.write("""
-    This Assistant uses **Retrieval-Augmented Generation (RAG)** 
-    to answer your questions about:
-    - 🦉 Owl movement and behavior  
-    - 📡 Detection signals  
-    - 🔧 Model decisions and SHAP explanations  
-    - 📊 Features contributing to predictions  
-    
-    We find the best matching information to help explain your question.
-    """)
-
-    # -------------------------------------------------------
-    # Initialize chat history
-    # -------------------------------------------------------
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
 
-    # -------------------------------------------------------
-    # Display previous chat messages
-    # -------------------------------------------------------
     for msg in st.session_state.chat_history:
         if msg["role"] == "user":
-            st.markdown(f"**🧑‍💻 You:** {msg['content']}")
+            st.markdown(f"**🧑 You:** {msg['content']}")
         else:
             st.markdown(f"**🦉 Assistant:** {msg['content']}")
 
-    st.markdown("---")
+    user_input = st.text_input("Ask a question:")
 
-    # -------------------------------------------------------
-    # User input
-    # -------------------------------------------------------
-    user_question = st.text_input("Ask a question about owl movement, detection signals, or the model:")
+    if user_input:
+        st.session_state.chat_history.append({"role": "user", "content": user_input})
 
-    if user_question:
+        ctx = retrieve_context(user_input)
 
-        # Add to history
-        st.session_state.chat_history.append({"role": "user", "content": user_question})
-
-        # -----------------------------------------------
-        # Retrieve relevant scientific/model context (RAG)
-        # -----------------------------------------------
-        rag_ctx = retrieve_context(user_question)
-
-        # -----------------------------------------------
-        # Optional SHAP explanation enhancement
-        # -----------------------------------------------
-        idx = st.number_input(
-            "Select a row (optional SHAP explanation):", 
-            min_value=0, max_value=len(df)-1, value=0
-        )
-        row = df.iloc[idx]
-        shap_vals = shap_for_row(row)
-        shap_text = shap_text_summary(shap_vals)
-
-        # -----------------------------------------------
-        # Final combined assistant response
-        # -----------------------------------------------
-        answer = f"""
+        reply = f"""
 ### 🦉 Assistant Response
 
-**Your Question:**  
-{user_question}
+**Your question:** {user_input}
 
----
+**Relevant context:**
+{ctx}
 
-### 📘 Retrieved Explanation (Scientific + Model Context)
-
-{rag_ctx}
-
----
-
-### 🔍 SHAP Explanation (Row {idx})  
-Understanding why the model predicted this row the way it did:
-
-{shap_text}
-
----
-
-### 📝 Summary  
-Based on your question and the available scientific knowledge + feature explanations,  
-the model's behavior is influenced by detection stability, noise profiles,  
-signal strength changes, and lag-based deviations that often precede movement.
-
-If you’d like, ask follow-up questions or choose a different data row.
+Based on your question, the model’s behavior depends on patterns in signal
+strength, noise, and timing that often indicate early movement or stable residency.
 """
 
-        # Save and display response
-        st.session_state.chat_history.append({"role": "assistant", "content": answer})
-        st.markdown(answer)
+        st.session_state.chat_history.append({"role": "assistant", "content": reply})
+        st.markdown(reply)
 
-    # Reset conversation
-    if st.button("🔄 Reset Conversation"):
+    if st.button("Reset Chat"):
         st.session_state.chat_history = []
         st.experimental_rerun()
-
