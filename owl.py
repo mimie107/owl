@@ -235,35 +235,9 @@ elif page == "📊 EDA Insights":
         (typically dusk or night). Behavioral rhythms can strongly influence detection patterns.
         """)
 
+  
     # -----------------------------------------------------
-    # 2. Correlation Heatmap — Movement vs Features
-    # -----------------------------------------------------
-    st.subheader("🔥 What Features Influence Movement the Most? (Correlation Heatmap)")
-
-    corr = df[FEATURES + ["movement_class"]].corr()
-
-    fig, ax = plt.subplots(figsize=(12, 10))
-    sns.heatmap(
-        corr,
-        annot=True, fmt=".2f",
-        cmap="coolwarm", square=True,
-        cbar_kws={"shrink": 0.6},
-        ax=ax
-    )
-    ax.set_title("Correlation Between Features and Movement", fontsize=16)
-    plt.xticks(rotation=45, ha="right")
-    plt.yticks(rotation=0)
-    st.pyplot(fig)
-
-    st.markdown("""
-    **Insight:**  
-    - Features related to **signal stability**, **rolling noise**, and **lag trends** 
-      often correlate with movement.  
-    - Lower SNR and higher noise frequently precede a movement event.
-    """)
-
-    # -----------------------------------------------------
-    # 3. Detection Counts per Owl
+    # 2. Detection Counts per Owl
     # -----------------------------------------------------
     if "motusTagID" in df.columns:
         st.subheader("🦉 Detection Volume per Owl")
@@ -286,7 +260,7 @@ elif page == "📊 EDA Insights":
         """)
 
     # ===============================================
-    # 4. SNR & Noise Trends per Owl (Downsampled)
+    # 3. SNR & Noise Trends per Owl 
     # ===============================================
     if "datetime" in df.columns and "motusTagID" in df.columns:
         st.subheader(" SNR & Noise Over Time (Per Owl)")
@@ -317,7 +291,7 @@ elif page == "📊 EDA Insights":
 
 
     # -----------------------------------------------------
-    # 5. SNR Distribution
+    # 4. SNR Distribution
     # -----------------------------------------------------
     st.subheader("📊 Distribution of Signal Strength (SNR)")
 
@@ -335,7 +309,7 @@ elif page == "📊 EDA Insights":
     """)
 
     # -----------------------------------------------------
-    # 6. Noise Distribution
+    # 5. Noise Distribution
     # -----------------------------------------------------
     st.subheader("🌫 Noise Level Distribution")
 
@@ -353,7 +327,7 @@ elif page == "📊 EDA Insights":
     """)
 
     # -----------------------------------------------------
-    # 7. Movement Probability Trend (Model Output)
+    # 6. Movement Probability Trend 
     # -----------------------------------------------------
     st.subheader("📈 Movement Probability Over Time (Model Output)")
 
