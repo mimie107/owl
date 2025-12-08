@@ -285,37 +285,28 @@ elif page == "📊 EDA Insights":
         vs. owls that possibly left early (low detection count).
         """)
 
-# -----------------------------------------------------
-# 4. SNR & Noise Trends per Owl (Downsampled)
-# -----------------------------------------------------
-import matplotlib.dates as mdates
+    # ===============================================
+    # 4. SNR & Noise Trends per Owl (Downsampled)
+    # ===============================================
+    if "datetime" in df.columns and "motusTagID" in df.columns:
+        st.subheader(" SNR & Noise Over Time (Per Owl)")
+        
+        selected_owl = st.selectbox("Choose Owl:", df["motusTagID"].unique())
+        owl_df = df[df["motusTagID"] == selected_owl].sort_values("datetime")
+        
+        # Downsample to avoid clutter
+        plot_df = owl_df.iloc[ :: 50, :]
+        
+        fig, ax = plt.subplots(figsize=(12, 4))
+        ax.plot(plot_df["datetime"], plot_df["snr"], label="SNR", color="blue")
+        ax.plot(plot_df["datetime"], plot_df["noise"], label="Noise", color="red", alpha=0.6)
+        ax.set_title(f"SNR & Noise Over Time - Owl {selected_owl}")
+        ax.set_ylabel("Value")
+        plt.xticks(rotation=45)
+        ax. legend()
+        st.pyplot(fig)
 
-if "datetime" in df.columns and "motusTagID" in df.columns:
-    st.subheader("📡 SNR & Noise Over Time (Per Owl)")
 
-    selected_owl = st.selectbox("Choose Owl:", df["motusTagID"].unique())
-    owl_df = df[df["motusTagID"] == selected_owl].sort_values("datetime")
-
-    # Downsample to avoid clutter
-    plot_df = owl_df.iloc[:50, :]
-
-    fig, ax = plt.subplots(figsize=(12, 4))
-
-    ax.plot(plot_df["datetime"], plot_df["snr"], label="SNR", color="blue")
-    ax.plot(plot_df["datetime"], plot_df["noise"], label="Noise", color="red", alpha=0.6)
-
-    ax.set_title(f"SNR & Noise Over Time — Owl {selected_owl}")
-    ax.set_ylabel("Value")
-
-    # ------------------------------------------
-    # FIX: Clean, readable datetime formatting
-    # ------------------------------------------
-    ax.xaxis.set_major_locator(mdates.AutoDateLocator(maxticks=10))
-    ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d\n%H:%M"))
-    plt.setp(ax.get_xticklabels(), rotation=30, ha="right")
-
-    ax.legend()
-    st.pyplot(fig)
 
     st.markdown("""
     **Insight:**  
